@@ -1,37 +1,31 @@
 import PropTypes from 'prop-types'
-import { Component } from 'react'
+import { useState } from 'react'
 import styles from './Searchbar.module.css'
 
-export class Searchbar extends Component {
-    state = {
-        searchText: "",
-    }
+export function Searchbar({ onSubmit }) {
+    const [searchText, setSearchText] = useState('')
 
-    onInputChange = (e) => {
-        this.setState({
-            searchText: e.target.value,
-        })
+    const onInputChange = (e) => {
+        setSearchText(e.target.value)
     }
-    render() {
-        return (
+    return (
             <header className={styles.searchbar_header}>
-                <form className={styles.form} onSubmit={this.props.onSubmit}>
+                <form className={styles.form} onSubmit={onSubmit}>
                     <button type="submit" className={styles.form_button}>&#x1F50D;</button>
 
                     <input 
-                        onChange={this.onInputChange}
+                        onChange={onInputChange}
                         className={styles.form_input}
                         name='searchInput'
                         type="text"
                         autoComplete="off"
-                        value={this.state.searchText}
+                        value={searchText}
                         autoFocus
                         placeholder="Search images and photos"
                     />
                 </form>
             </header>
         )
-    }
 }
 
 Searchbar.propTypes = {

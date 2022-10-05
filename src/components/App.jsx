@@ -1,4 +1,4 @@
-import { Component } from 'react'
+import { useState, useEffect } from 'react'
 import { ImageGallery } from "./ImageGallery/ImageGallery";
 import { Searchbar } from "./Searchbar/Searchbar";
 import { Button } from './Button/Button';
@@ -9,116 +9,92 @@ import styles from './App.module.css'
 import Notiflix from 'notiflix';
 
 
-export class App extends Component {
+export function App() {
 
-  state = {
-    URL: 'https://pixabay.com/api/',
-    KEY: '29185348-64a39df69b18d57fec00c3d74',
-    cards: [],
-    search: "",
-    error: "",
-    loading: false,
-    page: 1,
-    showModal: false,
-    modalImage: null,
-  }
+  const [cards, setCards] = useState([])
+  const [search, setSearch] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [showModal, setShowModal] = useState(false)
+  const [modalImage, setModalImage] = useState(null)
+  const [total, setTotal] = useState(0)
 
-  fetchPosts = () => {
-    const { search, page, URL, KEY } = this.state
-    
-    axios.get(`${URL}?q=${search}&page=${page}&key=${KEY}&image_type=photo&orientation=horizontal&per_page=12`)
-    .then(response => response.data.hits)
-    .then(data => {
-      const dataArray = [];
-      data.map(({ id, webformatURL, largeImageURL }) =>dataArray.push({ id, webformatURL, largeImageURL })
-      )
-      if (dataArray.length === 0) {
-        Notiflix.Notify.failure('not found any picture!');
+useEffect(() => {
+  if (search !== '') {
+      const URL = 'https://pixabay.com/api/';
+      const KEY = '29185348-64a39df69b18d57fec00c3d74';
+      const fetchPosts  = () => {
+        axios.get(`${URL}?q=${search}&page=${page}&key=${KEY}&image_type=photo&orientation=horizontal&per_page=12`)
+          .then(response => {
+          setTotal(response.data.total)
+          return response.data.hits
+        })
+        .then(data => {
+          const dataArray = [];
+          data.map(({ id, webformatURL, largeImageURL }) => dataArray.push({ id, webformatURL, largeImageURL }))
+          if (dataArray.length === 0) {
+            Notiflix.Notify.failure('not found any picture!');
+          }
+          return dataArray
+        })
+        .then((newCards) => {
+          return setCards(cards => [...cards, ...newCards])
+        })
+        .catch(error => {
+          setError(error)
+          Notiflix.Notify.failure('sorry, we have a problem')
+        })
+        .finally(() => {
+          setLoading(false)
+        })
       }
-      return dataArray
+      fetchPosts()
     }
-    )
-    .then( (newCards) => {
-        this.setState((prevState) => {
-          if (prevState.cards.length === 0) {
-        return {
-        cards: newCards,
-      }
-      } else {
-        
-        return {
-          cards: [...prevState.cards, ...newCards]
-        }
-      }
-      
-      })
-    })
-    .catch(error => {
-      this.setState({
-        error
-      })
-    })
-      .finally(() => this.setState({
-        loading: false,  
-      })
-      )
-  }
+  }, [search, page])
 
-  onSubmit = (e) => {
+  useEffect(() => {
+    if (error) {
+      console.log(error)
+    }
+  },[error])
+
+  const onSubmit = (e) => {
     e.preventDefault()
     const searchValue = e.target.elements.searchInput.value
-    if (searchValue !== "" && searchValue !== this.state.search) {
-      this.setState({
-      cards: [],
-      search: searchValue,
-      page: 1,
-      loading: true,
-      
-    })
+    if (searchValue !== "" && searchValue !== search) {
+      setCards([])
+      setSearch(searchValue)
+      setPage(1)
+      setError('')
+      setLoading(true)
     } else if (searchValue === "") {
       Notiflix.Notify.info('input is empty!');
     }
     
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    if (this.state.search !== prevState.search || this.state.page !== prevState.page) {
-      setTimeout(this.fetchPosts, 200) 
-    }
-  }
-
-  onLoadMore = () => {
-    this.setState((prevState) => {
-      return {
-        page: prevState.page + 1,
-        loading: true,
-      }
-    })
+  const onLoadMore = () => {
+    setPage(page + 1)
+    setLoading(true)
   }
   
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({ showModal: !showModal, }));
+  const toggleModal = () => {
+    setShowModal(!showModal)
   }
   
-  openModal = (largeImageURL) => {
-    this.setState({
-      modalImage: largeImageURL,
-    })
-    this.toggleModal()
-
+  const openModal = (largeImageURL) => {
+    setModalImage(largeImageURL)
+    toggleModal()
   }
 
-  render() {
-    const {showModal,modalImage,cards,loading} = this.state
-    return (
+  return (
       <div className={styles.app}>
-        <Searchbar onSubmit={this.onSubmit} />
-        <ImageGallery cards={cards} onOpen={this.openModal} />
+        <Searchbar onSubmit={onSubmit} />
+        <ImageGallery cards={cards} onOpen={openModal} />
         {loading && <Loader/>}
-        {cards.length > 1 && <Button onLoadMore={this.onLoadMore} />}
-        {showModal && modalImage && (<Modal onClose={this.toggleModal} modalImage={modalImage} />)}
+        {cards.length > 1 && cards.length < total && <Button onLoadMore={onLoadMore} />}
+        {showModal && modalImage && (<Modal onClose={toggleModal} modalImage={modalImage} />)}
       </div>
     );
-  }
-  
 };
